@@ -1,25 +1,25 @@
 import asyncio
+import os
+import pathlib
 
 import asyncpg
 from loguru import logger
 from pydantic_settings import BaseSettings
 
-from dotenv import load_dotenv
-
-load_dotenv()
 
 class Settings(BaseSettings):
-    postgres_host: str = '127.0.0.1'
-    postgres_db: str = 'db'
-    postgres_password: str = 'password'
-    postgres_user: str = 'postgres'
+    postgres_host: str = os.getenv('postgres_host')
+    postgres_db: str = os.getenv('postgres_db')
+    postgres_password: str = os.getenv('postgres_password')
+    postgres_user: str = os.getenv('postgres_user')
 
 
 settings = Settings()
+logger.debug(f'{settings.postgres_db=}')
 
 
 async def connect_create_if_not_exists(user, database, password, host):
-    for i in range(5):
+    for i in range(20):
         try:
             conn = await asyncpg.connect(
                 user=user, database=database,
@@ -42,7 +42,7 @@ async def connect_create_if_not_exists(user, database, password, host):
             break
         except Exception as e:
             print(e)
-            print('Retry in 5 seconds...')
+            print(f'[{i + 1}/20] Retry in 5 seconds...')
             await asyncio.sleep(5)
 
 
