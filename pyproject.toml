@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "service-lib"
-version = "0.2.2"
+version = "0.2.3"
 description = ""
 authors = ["Lawrence Naumov <prostolawr@gmail.com>"]
 readme = "README.md"
