@@ -219,7 +219,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         if isinstance(object_filter, dict):
             obj = await self._get_one(**object_filter)
         else:
-            obj = await self._get_one(object_filter)
+            obj = await self._get_one(id=object_filter)
         obj = await self._update_obj(
             obj,
             object_schema,
@@ -230,7 +230,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             if isinstance(object_filter, dict):
                 obj = await self._get_one(**object_filter)
             else:
-                obj = await self._get_one(object_filter)
+                obj = await self._get_one(id=object_filter)
         await self.session.refresh(obj)
         return obj
 
