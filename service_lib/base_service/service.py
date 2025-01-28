@@ -6,11 +6,6 @@ from typing import Self
 from typing import TypedDict
 from typing import TypeVar
 
-from fastapi import Depends
-from fastapi import HTTPException
-from fastapi import Response
-from fastapi import status
-from fastapi.params import Depends as DependsClass
 from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy import exc
@@ -46,8 +41,8 @@ type TableAttributesType = TableAttr | TableAttributeWithSubqueryLoad | list[
 class QueryService[Table: BaseTable]:
     base_table: type[Table]
 
-    def __init__(self, response: Response | None = Response):
-        self.response = response
+    def __init__(self):
+        pass
 
     @classmethod
     def _get_list_query(
@@ -151,15 +146,37 @@ class QueryService[Table: BaseTable]:
         return query
 
 
+try:
+    from fastapi import Depends
+except ImportError:
+    from service_lib.base_service.fastapi_mock import Depends
+
+try:
+    from fastapi.params import Depends as DependsClass
+except ImportError:
+    DependsClass = None
+
+try:
+    from fastapi import HTTPException
+except ImportError:
+    from service_lib.base_service.fastapi_mock import HTTPException
+
+try:
+    from fastapi import Response
+except ImportError:
+    from service_lib.base_service.fastapi_mock import Response
+
+
 class BaseService[Table: BaseTable, IDType](QueryService):
     base_table: type[Table]
 
     def __init__(
             self,
-            response: Response = Response,
-            session: AsyncSession = Depends(get_session)
+            session: AsyncSession = Depends(get_session),
+            response: Response = Response
     ):
-        super().__init__(response)
+        super().__init__()
+        self.response = response
         self._session_creator = None
         self.session = session
         self._need_commit_and_close = False
@@ -187,7 +204,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         obj = await self.session.scalar(query)
 
         if obj is None and not mute_not_found_exception:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+            raise HTTPException(status_code=404)
 
         return obj
 
@@ -206,7 +223,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
                         status_code=404,
                         detail=f'{table_name} not found'
                     )
-                raise HTTPException(status_code=status.HTTP_409_CONFLICT)
+                raise HTTPException(status_code=409)
 
     async def _update(
             self,
@@ -258,7 +275,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         self.session.add(obj)
         await self._commit()
         if not modified:
-            self.response.status_code = status.HTTP_304_NOT_MODIFIED
+            self.response.status_code = 304
         return obj
 
     async def _create(
@@ -282,7 +299,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         self.session.add(obj)
         await self._commit()
         await self.session.refresh(obj)
-        self.response.status_code = status.HTTP_201_CREATED
+        self.response.status_code = 201
         return obj
 
     async def _delete(self, object_filter: dict[str, Any] | IDType):
@@ -295,7 +312,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
     async def _delete_obj(self, obj: Table):
         await self.session.delete(obj)
         await self._commit()
-        self.response.status_code = status.HTTP_204_NO_CONTENT
+        self.response.status_code = 204
 
     async def __aenter__(self) -> Self:
         if not isinstance(self.session, AsyncSession):
