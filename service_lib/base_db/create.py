@@ -1,6 +1,5 @@
 import asyncio
 import os
-import pathlib
 
 import asyncpg
 from loguru import logger
