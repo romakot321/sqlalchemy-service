@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "service-lib"
+name = "sqlalchemy-service"
 version = "0.2.6a0"
 description = ""
 authors = ["Lawrence Naumov <prostolawr@gmail.com>"]

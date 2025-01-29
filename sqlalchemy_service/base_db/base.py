@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import sessionmaker
 
-from service_lib.base_db.create import settings
+from sqlalchemy_service.base_db.create import settings
 
 
 logger.debug('Initialize service.base_db.base')

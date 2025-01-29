@@ -16,8 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import InstrumentedAttribute as TableAttr
 
-from service_lib.base_db.base import Base as BaseTable
-from service_lib.base_db.base import get_session
+from sqlalchemy_service.base_db.base import Base as BaseTable
+from sqlalchemy_service.base_db.base import get_session
 
 F = TypeVar('F', bound=Callable[..., Any])
 
@@ -149,7 +149,7 @@ class QueryService[Table: BaseTable]:
 try:
     from fastapi import Depends
 except ImportError:
-    from service_lib.base_service.fastapi_mock import Depends
+    from sqlalchemy_service.base_service._fastapi_mock import Depends
 
 try:
     from fastapi.params import Depends as DependsClass
@@ -159,12 +159,12 @@ except ImportError:
 try:
     from fastapi import HTTPException
 except ImportError:
-    from service_lib.base_service.fastapi_mock import HTTPException
+    from sqlalchemy_service.base_service._fastapi_mock import HTTPException
 
 try:
     from fastapi import Response
 except ImportError:
-    from service_lib.base_service.fastapi_mock import Response
+    from sqlalchemy_service.base_service._fastapi_mock import Response
 
 
 class BaseService[Table: BaseTable, IDType](QueryService):
