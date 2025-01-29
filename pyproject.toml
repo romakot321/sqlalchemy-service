@@ -4,6 +4,7 @@ version = "0.2.6a0"
 description = ""
 authors = ["Lawrence Naumov <prostolawr@gmail.com>"]
 readme = "README.md"
+license = "LICENSE"
 
 [tool.poetry.dependencies]
 python = "^3.13"
