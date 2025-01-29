@@ -8,7 +8,7 @@ from pydantic_settings import SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
+    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra="allow")
 
     postgres_host: str = os.getenv('postgres_host')
     postgres_db: str = os.getenv('postgres_db')
