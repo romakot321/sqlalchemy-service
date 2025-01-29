@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sqlalchemy-service"
-version = "0.2.6a0"
+version = "0.2.6a1"
 description = ""
 authors = ["Lawrence Naumov <prostolawr@gmail.com>"]
 readme = "README.md"
@@ -19,7 +19,7 @@ fastapi = { version = "^0.115.6", optional = true }
 fastapi = ["fastapi"]
 
 [tool.poetry.scripts]
-init-db = "service_lib.base_db.create:run_init_db"
+init-db = "sqlalchemy_service.base_db.create:run_init_db"
 
 [build-system]
 requires = ["poetry-core"]
