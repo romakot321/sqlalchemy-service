@@ -1,3 +1,5 @@
+"""Module with functions for prepare database for using"""
+
 import asyncio
 import os
 
@@ -17,10 +19,10 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-logger.debug(f'{settings.postgres_db=}')
 
 
 async def connect_create_if_not_exists(user, database, password, host):
+    """Do a 20 attempts to connect and create database"""
     for i in range(20):
         try:
             conn = await asyncpg.connect(
@@ -43,12 +45,12 @@ async def connect_create_if_not_exists(user, database, password, host):
             await sys_conn.close()
             break
         except Exception as e:
-            print(e)
-            print(f'[{i + 1}/20] Retry in 5 seconds...')
+            logger.exception(f"Error on database connection: {str(e)}\n[{i + 1}/20] Retry in 5 seconds...")
             await asyncio.sleep(5)
 
 
 def run_init_db():
+    """Run database creation in DMS"""
     asyncio.run(
         connect_create_if_not_exists(
             settings.postgres_user,
