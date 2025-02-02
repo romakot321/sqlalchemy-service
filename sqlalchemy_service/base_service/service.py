@@ -1,3 +1,5 @@
+"""Module with base classes for db connection and queries management"""
+
 import uuid
 from typing import Any
 from typing import Callable
@@ -39,6 +41,7 @@ type TableAttributesType = TableAttr | TableAttributeWithSubqueryLoad | list[
 
 
 class QueryService[Table: BaseTable]:
+    """Service with query builders"""
     base_table: type[Table]
 
     def __init__(self):
@@ -53,6 +56,9 @@ class QueryService[Table: BaseTable]:
             none_as_value: bool = False,
             **filters
     ) -> Select:
+        """Query builder for select list of models.
+        Implement a filters and pagination
+        """
         query = select(cls.base_table)
         if select_in_load is not None:
             query = cls._query_add_select_in_load(query, select_in_load)
@@ -80,6 +86,7 @@ class QueryService[Table: BaseTable]:
             query: Select,
             table_attributes: TableAttributesType
     ) -> Select:
+        """Builder for selectinload for model(aka relationship)"""
         if not isinstance(table_attributes, list):
             table_attributes = [table_attributes]
         select_in_loads = []
@@ -101,6 +108,7 @@ class QueryService[Table: BaseTable]:
             cls,
             select_in_load: TableAttributesType
     ) -> Select:
+        """Build a selectinload query for specified relationships"""
         query = select(cls.base_table)
         return cls._query_add_select_in_load(query, select_in_load)
 
@@ -111,12 +119,14 @@ class QueryService[Table: BaseTable]:
             none_as_values: bool = False,
             **filters
     ) -> SelectType:
+        """Append the query with filters"""
         if none_as_values:
             return query.filter_by(**filters)
         return cls.__query_filter_without_none_as_value(query, **filters)
 
     @classmethod
     def _filter_query(cls, none_as_values: bool = False, **filters) -> Select:
+        """Build a query with filters"""
         query = select(cls.base_table)
         return cls._query_filter(
             query,
@@ -133,11 +143,13 @@ class QueryService[Table: BaseTable]:
 
     @classmethod
     def _like_filter_query(cls, **kwargs) -> Select:
+        """Build a query with like filters"""
         query = select(cls.base_table)
         return cls._query_like_filter(query, **kwargs)
 
     @classmethod
     def _query_like_filter(cls, query, **kwargs):
+        """Append a query with like filters"""
         for key, value in kwargs.items():
             if value is None:
                 continue
@@ -154,7 +166,7 @@ except ImportError:
 try:
     from fastapi.params import Depends as DependsClass
 except ImportError:
-    DependsClass = None
+    DependsClass = Depends
 
 try:
     from fastapi import HTTPException
@@ -168,6 +180,9 @@ except ImportError:
 
 
 class BaseService[Table: BaseTable, IDType](QueryService):
+    """Base class for service with database connection.
+    Implement base queries builders, session management and base db exceptions handlers.
+    """
     base_table: type[Table]
 
     def __init__(
@@ -185,10 +200,19 @@ class BaseService[Table: BaseTable, IDType](QueryService):
 
     async def _get_list(
             self,
-            *args, **kwargs
+            page: int | None = None,
+            count: int | None = None,
+            select_in_load: TableAttributesType | None = None,
+            none_as_value: bool = False,
+            **filters
     ) -> ScalarResult[Table]:
+        """Get models list by filters. Defaults page to 0 and count to 20"""
         query = self._get_list_query(
-            *args, **kwargs
+            page=page,
+            count=count,
+            select_in_load=select_in_load,
+            none_as_values=none_as_values,
+            **filters
         )
         return await self.session.scalars(query)
 
@@ -198,6 +222,9 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             mute_not_found_exception: bool = False,
             **filters
     ) -> Table:
+        """Get model bu filters.
+        If model not found and mute_not_found_exception is False, then throw HTTPException with 404 status(Not found)
+        """
         query = self._filter_query(**filters)
         if select_in_load is not None:
             query = self._query_add_select_in_load(query, select_in_load)
@@ -209,12 +236,16 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         return obj
 
     async def _commit(self):
+        """Commit changes.
+        Handle sqlalchemy.exc.IntegrityError.
+        If exception is not found error, then throw HTTPException with 404 status(Not found).
+        Else log exception and throw HTTPException with 409 status(Conflict)
+        """
         if self._need_commit_and_close:
             try:
                 await self.session.commit()
             except exc.IntegrityError as e:
                 await self.session.rollback()
-                logger.exception(e)
                 if 'is not present in table' in str(e.orig):
                     table_name = str(e.orig).split('is not present in table')[
                         1].strip().capitalize()
@@ -223,6 +254,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
                         status_code=404,
                         detail=f'{table_name} not found'
                     )
+                logger.exception(e)
                 raise HTTPException(status_code=409)
 
     async def _update(
@@ -230,9 +262,13 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             object_filter: dict[str, Any] | IDType,
             object_schema: BaseModel | dict | None = None,
             none_as_value: bool = False,
-            re_get: bool = False,
             **kwargs
     ) -> Table:
+        """Get model by filters and update its rows with schema and kwargs.
+        if none_as_value is None, then skip keys in schema, which value is none.
+        Update model, and if no fields is updated, then set fastapi response status_code to 304(Not modified).
+        Return updated model with new fields.
+        """
         if isinstance(object_filter, dict):
             obj = await self._get_one(**object_filter)
         else:
@@ -243,11 +279,6 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             none_as_value,
             **kwargs
         )
-        if re_get:
-            if isinstance(object_filter, dict):
-                obj = await self._get_one(**object_filter)
-            else:
-                obj = await self._get_one(id=object_filter)
         await self.session.refresh(obj)
         return obj
 
@@ -258,6 +289,10 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             none_as_value: bool = False,
             **kwargs
     ) -> Table:
+        """Update model rows with schema and kwargs.
+        if none_as_value is None, then skip keys in schema, which value is none.
+        Update model, and if no fields is updated, then set fastapi response status_code to 304(Not modified).
+        """
         if object_schema is None:
             object_schema = {}
         elif isinstance(object_schema, BaseModel):
@@ -284,6 +319,8 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             creator_id: uuid.UUID | None = None,
             **kwargs
     ) -> Table:
+        """Create model from schema and kwargs,
+        set fastapi response status_code to 201(Created) and return created model"""
         obj_dict = {}
         if object_schema is not None:
             obj_dict = object_schema.model_dump()
@@ -303,6 +340,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         return obj
 
     async def _delete(self, object_filter: dict[str, Any] | IDType):
+        """Get model by filters and delete it"""
         if isinstance(object_filter, dict):
             obj = await self._get_one(**object_filter)
         else:
@@ -310,6 +348,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         await self._delete_obj(obj)
 
     async def _delete_obj(self, obj: Table):
+        """Delete model and set fastapi response status_code to 204(No content)"""
         await self.session.delete(obj)
         await self._commit()
         self.response.status_code = 204

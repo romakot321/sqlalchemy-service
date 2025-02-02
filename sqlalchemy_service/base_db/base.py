@@ -1,3 +1,5 @@
+"""Module with database connection pool and engine"""
+
 import asyncio
 
 from loguru import logger
@@ -39,6 +41,7 @@ async_session = sessionmaker(
 
 
 async def init_models():
+    """Migrate models to DB. Better to use alembic"""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
@@ -50,6 +53,7 @@ def run_init_models():
 
 
 async def get_session():
+    """Generator for database session. Need to be closed"""
     async with async_session() as session:
         yield session
 
