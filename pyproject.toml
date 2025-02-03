@@ -27,7 +27,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "sqlalchemy-service"
-version = "0.2.6a2"
+version = "0.2.6"
 description = ""
 authors = [
   { name = "Lawrence Naumov", email = "<prostolawr@gmail.com>" },
