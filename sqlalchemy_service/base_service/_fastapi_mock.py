@@ -1,3 +1,5 @@
+"""Module with mocks for fastapi classes, which used in this library"""
+
 import typing
 from typing import Annotated, Any
 
@@ -36,8 +38,9 @@ class HTTPException:
         raise ValueError(f'Error with HTTP status code: {status_code}, details: {detail}')
 
 
-def Depends(*args, **kwargs):
-    pass
+class Depends:
+    def __init__(self, *args, **kwargs):
+        pass
 
 
 class Response:

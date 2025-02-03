@@ -24,3 +24,33 @@ init-db = "sqlalchemy_service.base_db.create:run_init_db"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "sqlalchemy-service"
+version = "0.2.6a2"
+description = ""
+authors = [
+  { name = "Lawrence Naumov", email = "<prostolawr@gmail.com>" },
+]
+readme = "README.md"
+license = "LICENSE"
+requires-python = ">=3.9"
+keywords = ["sqlalchemy"]
+maintainers = [
+  { name = "Lawrence Naumov", email = "<prostolawr@gmail.com>" },
+  { name = "romakot321" },
+]
+dependencies = [
+    "sqlalchemy~=2.0.37",
+    "loguru~=0.7.3",
+    "pydantic-settings~=2.7.1",
+    "asyncpg~=0.30.0",
+    "alembic~=1.14.0"
+]
+
+[project.optional-dependencies]
+fastapi = ["fastapi~=0.115.8"]
+
+[project.urls]
+Homepage = "https://github.com/Dianapp-online/sqlalchemy-service"
+Issues = "https://github.com/Dianapp-online/sqlalchemy-service/issues"
