@@ -10,10 +10,10 @@ from sqlalchemy.orm import sessionmaker
 
 logger.debug('Initialize service.base_db.base')
 
-from db_configure import DBConfigurator
+from sqlalchemy_service.base_db.db_configure import DBConfigurator
 
 db_configurator = DBConfigurator()
-DATABASE_URL = db_configurator.get_url()
+DATABASE_URL = db_configurator.configuration.get_url()
 
 engine = create_async_engine(
     DATABASE_URL,
