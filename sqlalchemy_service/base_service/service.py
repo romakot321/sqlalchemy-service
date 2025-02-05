@@ -211,7 +211,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             page=page,
             count=count,
             select_in_load=select_in_load,
-            none_as_values=none_as_values,
+            none_as_values=none_as_value,
             **filters
         )
         return await self.session.scalars(query)

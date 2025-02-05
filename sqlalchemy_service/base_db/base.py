@@ -13,9 +13,9 @@ from sqlalchemy_service.base_db.create import settings
 
 logger.debug('Initialize service.base_db.base')
 
-DATABASE_URL = f'postgresql+asyncpg://' \
-               f'{settings.postgres_user}:{settings.postgres_password}' \
-               f'@{settings.postgres_host}/{settings.postgres_db}'
+DATABASE_URL = f'{settings.database_type}+{settings.database_driver}://' \
+               f'{settings.database_user}:{settings.database_password}' \
+               f'@{settings.database_host}/{settings.database_db}'
 
 
 
