@@ -1,23 +1,3 @@
-[tool.poetry]
-name = "sqlalchemy-service"
-version = "0.2.7"
-description = ""
-authors = ["Lawrence Naumov <prostolawr@gmail.com>"]
-readme = "README.md"
-license = "LICENSE"
-
-[tool.poetry.dependencies]
-python = "^3.13"
-sqlalchemy = "^2.0.37"
-loguru = "^0.7.3"
-pydantic-settings = "^2.7.1"
-asyncpg = "^0.30.0"
-alembic = "^1.14.0"
-fastapi = { version = "^0.115.6", optional = true }
-
-[tool.poetry.extras]
-fastapi = ["fastapi"]
-
 [tool.poetry.scripts]
 init-db = "sqlalchemy_service.base_db.create:run_init_db"
 
@@ -27,29 +7,30 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "sqlalchemy-service"
-version = "0.2.7"
+version = "0.2.8a0"
 description = ""
 authors = [
-  { name = "Lawrence Naumov", email = "<prostolawr@gmail.com>" },
+  { name = "prostoLavr (Lawrence Naumov)", email = "<prostolawr@gmail.com>" },
 ]
 readme = "README.md"
 license = "LICENSE"
-requires-python = ">=3.9"
+requires-python = ">=3.12,<4.0"
 keywords = ["sqlalchemy"]
 maintainers = [
-  { name = "Lawrence Naumov", email = "<prostolawr@gmail.com>" },
+  { name = "prostoLavr (Lawrence Naumov)", email = "<prostolawr@gmail.com>" },
   { name = "romakot321" },
 ]
 dependencies = [
     "sqlalchemy~=2.0.37",
     "loguru~=0.7.3",
     "pydantic-settings~=2.7.1",
-    "asyncpg~=0.30.0",
     "alembic~=1.14.0"
 ]
 
 [project.optional-dependencies]
 fastapi = ["fastapi~=0.115.8"]
+mysql = ["aiomysql~=0.2.0"]
+postgres = ["asyncpg~=0.30.0"]
 
 [project.urls]
 Homepage = "https://github.com/Dianapp-online/sqlalchemy-service"
