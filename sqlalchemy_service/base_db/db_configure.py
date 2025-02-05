@@ -1,13 +1,17 @@
 import os
+from abc import abstractmethod
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from loguru import logger
+from pydantic_settings import BaseSettings, SettingsConfigDict, SettingsError
 
 
 class DBConfigureInterface:
-    def __str__(self):
+    @abstractmethod
+    def get_url(self) -> str:
         ...
 
-    def get_url(self) -> str:
+    @abstractmethod
+    def get_name(self) -> str:
         ...
 
 
@@ -26,26 +30,63 @@ class DBConfigurationNotFoundError(Exception):
         super().__init__("Valid DB configuration was not found")
 
 
+class OldPostgresSQLDBConfiguration(DBConfigureInterface, BaseSettings):
+    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra="allow")
+
+    pg_default_envs_link = "https://www.postgresql.org/docs/current/libpq-envars.html"
+
+    postgres_host: str = os.getenv('POSTGRES_HOST', '')
+    postgres_db: str = os.getenv('POSTGRES_DB', '')
+    postgres_port: str = os.getenv('POSTGRES_PORT', "5432")
+    postgres_password: str = os.getenv('POSTGRES_PASSWORD', "postgres")
+    postgres_user: str = os.getenv('POSTGRES_USER', "postgres")
+
+    def get_url(self) -> str:
+        logger.warning(
+            "POSTGRES_<setting> is deprecated. "
+            "Please, use PG<setting>\n"
+            "See {pg_default_envs_link}"
+        )
+        if not self.pghost:
+            raise DBHostNotSetError()
+        if not self.pgdatabse:
+            raise DBNameNotSetError()
+        return f'postgres+asyncpg://' \
+               f'{self.postgres_user}:{self.postgres_password}' \
+               f'@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}'
+
+    def __str__(self):
+        return self.get_url()
+
+    def get_name(self) -> str:
+        return 'postgres'
+
+
 class PostgresSQLDBConfiguration(DBConfigureInterface, BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra="allow")
 
-    pghost: str = os.getenv('PGHOST')
-    pgdb: str = os.getenv('PGDB')
-    pgport: str = os.getenv('PGPORT') or "5432"
-    pgpassword: str = os.getenv('PGPASSWORD') or "postgres"
-    pguser: str = os.getenv('PGUSER') or "postgres"
+    name = 'postgres'
+
+    pghost: str = os.getenv('PGHOST', '')
+    pgdatabase: str = os.getenv('PGDATABASE', '')
+    pgport: str = os.getenv('PGPORT', "5432")
+    pgpassword: str = os.getenv('PGPASSWORD', "postgres")
+    pguser: str = os.getenv('PGUSER', "postgres")
 
     def get_url(self) -> str:
         if not self.pghost:
             raise DBHostNotSetError()
-        if not self.pgdb:
+        if not self.pgdatabase:
             raise DBNameNotSetError()
-        return f'{self.database_type}+{self.database_driver}://' \
-               f'{self.database_user}:{self.database_password}' \
-               f'@{self.database_host}/{self.database_db}'
+        return f'postgres+asyncpg://' \
+               f'{self.pguser}:{self.pgpassword}' \
+               f'@{self.pghost}:{self.pgport}/{self.pgdatabase}'
 
     def __str__(self):
         return self.get_url()
+
+    def get_name(self) -> str:
+        return 'postgres'
 
 
 class MySQLDBConfiguration(DBConfigureInterface, BaseSettings):
@@ -53,25 +94,28 @@ class MySQLDBConfiguration(DBConfigureInterface, BaseSettings):
 
     mysql_host: str = os.getenv('MYSQL_HOST')
     mysql_db: str = os.getenv('MYSQL_DB')
-    mysql_port: str = os.getenv('MYSQL_PORT') or "3306"
-    mysql_password: str = os.getenv('MYSQL_PASSWORD') or ""
-    mysql_user: str = os.getenv('MYSQL_USER') or "root"
+    mysql_port: str = os.getenv('MYSQL_PORT', "3306")
+    mysql_password: str = os.getenv('MYSQL_PASSWORD', "")
+    mysql_user: str = os.getenv('MYSQL_USER', "root")
 
     def get_url(self) -> str:
         if not self.mysql_host:
             raise DBHostNotSetError()
         if not self.mysql_db:
             raise DBNameNotSetError()
-        return f'{self.database_type}+{self.database_driver}://' \
-               f'{self.database_user}:{self.database_password}' \
-               f'@{self.database_host}/{self.database_db}'
+        return f'mysql+mysqlconnector://' \
+               f'{self.mysql_user}:{self.mysql_password}' \
+               f'@{self.mysql_host}:{self.mysql_port}/{self.mysql_db}'
 
     def __str__(self):
         return self.get_url()
 
+    def get_name(self) -> str:
+        return 'mysql'
+
 
 class DBConfigurator:
-    configures = [PostgresSQLDBConfiguration, MySQLDBConfiguration]
+    configuration_classes = [PostgresSQLDBConfiguration, MySQLDBConfiguration]
 
     def __init__(self):
         self.configure_url = ''
@@ -84,10 +128,11 @@ class DBConfigurator:
         return self.get_url()
 
     def _try_configures(self):
-        for configure in self.configures:
+        for configuration_class in self.configuration_classes:
             try:
-                self.configure_url = configure().get_url()
+                configuration = configuration_class()
+                self.configure_url = configuration.get_url()
                 return
-            except (DBHostNotSetError, DBNameNotSetError):
+            except (DBHostNotSetError, DBNameNotSetError, SettingsError):
                 pass
         raise DBConfigurationNotFoundError
