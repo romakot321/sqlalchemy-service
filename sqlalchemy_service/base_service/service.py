@@ -116,21 +116,21 @@ class QueryService[Table: BaseTable]:
     def _query_filter[SelectType: Select](
             cls,
             query: SelectType,
-            none_as_values: bool = False,
+            none_as_value: bool = False,
             **filters
     ) -> SelectType:
         """Append the query with filters"""
-        if none_as_values:
+        if none_as_value:
             return query.filter_by(**filters)
         return cls.__query_filter_without_none_as_value(query, **filters)
 
     @classmethod
-    def _filter_query(cls, none_as_values: bool = False, **filters) -> Select:
+    def _filter_query(cls, none_as_value: bool = False, **filters) -> Select:
         """Build a query with filters"""
         query = select(cls.base_table)
         return cls._query_filter(
             query,
-            none_as_values=none_as_values,
+            none_as_value=none_as_value,
             **filters
         )
 
@@ -211,7 +211,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             page=page,
             count=count,
             select_in_load=select_in_load,
-            none_as_values=none_as_value,
+            none_as_value=none_as_value,
             **filters
         )
         return await self.session.scalars(query)
