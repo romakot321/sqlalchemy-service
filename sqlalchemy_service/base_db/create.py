@@ -27,13 +27,13 @@ async def connect_create_if_not_exists(
     """Do 20 attempts to connect and create database"""
     for i in range(20):
         try:
-            conn = await driver.connect(db_configuration.get_url())
+            conn = await driver.connect(db_configuration.get_url().replace('+asyncpg', ''))
             await conn.close()
             break
         except driver.InvalidCatalogNameError:
             # Database does not exist, create it.
             sys_conn = await driver.connect(
-                db_configuration.get_url_with_default_db_name(),
+                db_configuration.get_url_with_default_db_name().replace('+asyncpg', ''),
             )
             await sys_conn.execute(
                 f'CREATE DATABASE "{db_configuration.get_db_name()}" '
