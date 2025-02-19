@@ -7,7 +7,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "sqlalchemy-service"
-version = "0.2.10"
+version = "1.0.0a0"
 description = ""
 authors = [
   { name = "prostoLavr (Lawrence Naumov)", email = "<prostolawr@gmail.com>" },
@@ -21,7 +21,7 @@ maintainers = [
   { name = "romakot321" },
 ]
 dependencies = [
-    "sqlalchemy~=2.0.37",
+    "sqlalchemy[asyncio] (>=2.0.38,<3.0.0)",
     "loguru~=0.7.3",
     "pydantic-settings~=2.7.1",
     "alembic~=1.14.0"

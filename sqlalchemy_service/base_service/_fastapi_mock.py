@@ -1,14 +1,15 @@
 """Module with mocks for fastapi classes, which used in this library"""
 
 import typing
-from typing import Annotated, Any
+from typing import Annotated
+from typing import Any
 
 from typing_extensions import Doc
 
 
-class HTTPException:
-    def __new__(
-            cls,
+class HTTPException(Exception):
+    def __init__(
+            self,
             status_code: Annotated[
                 int,
                 Doc(
@@ -35,7 +36,9 @@ class HTTPException:
                 ),
             ] = None,
     ) -> None:
-        raise ValueError(f'Error with HTTP status code: {status_code}, details: {detail}')
+        super().__init__(
+            f'Error with HTTP status code: {status_code}, details: {detail}'
+        )
 
 
 class Depends:
@@ -57,7 +60,10 @@ class Response:
     def render(self, content: typing.Any) -> None:
         ...
 
-    def init_headers(self, headers: typing.Mapping[str, str] | None = None) -> None:
+    def init_headers(
+            self,
+            headers: typing.Mapping[str, str] | None = None
+    ) -> None:
         ...
 
     def set_cookie(self, *args, **kwargs) -> None:

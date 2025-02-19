@@ -2,32 +2,21 @@
 
 import uuid
 from typing import Any
-from typing import Callable
-from typing import Generic
 from typing import Self
 from typing import TypedDict
-from typing import TypeVar
 
 from loguru import logger
 from pydantic import BaseModel
-from sqlalchemy import exc
 from sqlalchemy import ScalarResult
-from sqlalchemy import select
 from sqlalchemy import Select
+from sqlalchemy import exc
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import InstrumentedAttribute as TableAttr
 
 from sqlalchemy_service.base_db.base import Base as BaseTable
-from sqlalchemy_service.base_db.base import get_session
-
-F = TypeVar('F', bound=Callable[..., Any])
-
-
-class CopySignature(Generic[F]):
-    def __init__(self, target: F) -> None: ...
-
-    def __call__(self, wrapped: Callable[..., Any]) -> F: ...
+from sqlalchemy_service.base_db.base import ServiceEngine
 
 
 class TableAttributeWithSubqueryLoad(TypedDict):
@@ -160,22 +149,16 @@ class QueryService[Table: BaseTable]:
 
 try:
     from fastapi import Depends
-except ImportError:
-    from sqlalchemy_service.base_service._fastapi_mock import Depends
-
-try:
     from fastapi.params import Depends as DependsClass
-except ImportError:
-    DependsClass = Depends
-
-try:
     from fastapi import HTTPException
-except ImportError:
-    from sqlalchemy_service.base_service._fastapi_mock import HTTPException
-
-try:
     from fastapi import Response
 except ImportError:
+    logger.info("Use configuration with mock fastapi")
+    from sqlalchemy_service.base_service._fastapi_mock import Depends
+
+
+    DependsClass = Depends
+    from sqlalchemy_service.base_service._fastapi_mock import HTTPException
     from sqlalchemy_service.base_service._fastapi_mock import Response
 
 
@@ -184,10 +167,11 @@ class BaseService[Table: BaseTable, IDType](QueryService):
     Implement base queries builders, session management and base db exceptions handlers.
     """
     base_table: type[Table]
+    engine: ServiceEngine
 
     def __init__(
             self,
-            session: AsyncSession = Depends(get_session),
+            session: AsyncSession = Depends(engine.get_session),
             response: Response = Response
     ):
         super().__init__()
@@ -222,7 +206,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             mute_not_found_exception: bool = False,
             **filters
     ) -> Table:
-        """Get model bu filters.
+        """Get model filters.
         If model not found and mute_not_found_exception is False, then throw HTTPException with 404 status(Not found)
         """
         query = self._filter_query(**filters)
@@ -355,7 +339,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
 
     async def __aenter__(self) -> Self:
         if not isinstance(self.session, AsyncSession):
-            self._session_creator = get_session()
+            self._session_creator = self.engine.get_session()
             self.session = await anext(self._session_creator)
             logger.debug(f'Create session ({self.session}) with aenter')
             self._need_commit_and_close = True
