@@ -45,7 +45,8 @@ class QueryService[Table: BaseTable]:
             none_as_value: bool = False,
             **filters
     ) -> Select:
-        """Query builder for select list of models.
+        """
+        Query builder for select list of models.
         Implement a filters and pagination
         """
         query = select(cls.base_table)
@@ -163,15 +164,21 @@ except ImportError:
 
 
 class BaseService[Table: BaseTable, IDType](QueryService):
-    """Base class for service with database connection.
-    Implement base queries builders, session management and base db exceptions handlers.
+    """
+    Base class for service with database connection.
+    Implement base queries builders, session management
+    and base db exceptions handlers.
     """
     base_table: type[Table]
     engine: ServiceEngine
 
+
+    async def get_session(self):
+        return self.engine.get_session()
+
     def __init__(
             self,
-            session: AsyncSession = Depends(engine.get_session),
+            session: AsyncSession = Depends(get_session),
             response: Response = Response
     ):
         super().__init__()
@@ -207,7 +214,8 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             **filters
     ) -> Table:
         """Get model filters.
-        If model not found and mute_not_found_exception is False, then throw HTTPException with 404 status(Not found)
+        If model not found and mute_not_found_exception is False,
+        then throw HTTPException with 404 status (Not found)
         """
         query = self._filter_query(**filters)
         if select_in_load is not None:
@@ -220,10 +228,12 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         return obj
 
     async def _commit(self):
-        """Commit changes.
+        """
+        Commit changes.
         Handle sqlalchemy.exc.IntegrityError.
-        If exception is not found error, then throw HTTPException with 404 status(Not found).
-        Else log exception and throw HTTPException with 409 status(Conflict)
+        If exception is not found error,
+        then throw HTTPException with 404 status (Not found).
+        Else log exception and throw HTTPException with 409 status (Conflict)
         """
         if self._need_commit_and_close:
             try:
@@ -248,9 +258,11 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             none_as_value: bool = False,
             **kwargs
     ) -> Table:
-        """Get model by filters and update its rows with schema and kwargs.
+        """
+        Get model by filters and update its rows with schema and kwargs.
         if none_as_value is None, then skip keys in schema, which value is none.
-        Update model, and if no fields is updated, then set fastapi response status_code to 304(Not modified).
+        Update model, and if no fields is updated,
+        then set fastapi response status_code to 304(Not modified).
         Return updated model with new fields.
         """
         if isinstance(object_filter, dict):
@@ -273,9 +285,11 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             none_as_value: bool = False,
             **kwargs
     ) -> Table:
-        """Update model rows with schema and kwargs.
+        """
+        Update model rows with schema and kwargs.
         if none_as_value is None, then skip keys in schema, which value is none.
-        Update model, and if no fields is updated, then set fastapi response status_code to 304(Not modified).
+        Update model, and if no fields is updated,
+        then set fastapi response status_code to 304(Not modified).
         """
         if object_schema is None:
             object_schema = {}
@@ -303,8 +317,11 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             creator_id: uuid.UUID | None = None,
             **kwargs
     ) -> Table:
-        """Create model from schema and kwargs,
-        set fastapi response status_code to 201(Created) and return created model"""
+        """
+        Create model from schema and kwargs,
+        set fastapi response status_code to 201(Created)
+        and return created model
+        """
         obj_dict = {}
         if object_schema is not None:
             obj_dict = object_schema.model_dump()
@@ -332,7 +349,9 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         await self._delete_obj(obj)
 
     async def _delete_obj(self, obj: Table):
-        """Delete model and set fastapi response status_code to 204(No content)"""
+        """
+        Delete model and set fastapi response status_code to 204(No content)
+        """
         await self.session.delete(obj)
         await self._commit()
         self.response.status_code = 204
