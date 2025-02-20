@@ -16,7 +16,7 @@ from sqlalchemy_service.base_db.db_configure import DBConfigurator
 class ServiceEngine:
     def __init__(
             self,
-            url: str | None,
+            url: str | None = None,
             pool_size: int = 5,
             max_overflow: int = 0,
             pool_reset_on_return: bool = True,
@@ -49,3 +49,4 @@ class ServiceEngine:
 
 class Base(DeclarativeBase):
     pass
+
