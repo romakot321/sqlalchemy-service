@@ -200,9 +200,10 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         self.response = response
         self._session_creator = None
         self.session = session
-        self._need_commit_and_close = False
-        if not isinstance(session, DependsClass):
-            self._need_commit_and_close = True
+        # isinstance(session, DependsClass) == True means that
+        # FastAPI "Depends" was not called.
+        # Then you need use python with-syntax to create and close session
+        self._need_commit_and_close = isinstance(session, DependsClass)
 
     async def _count(self, none_as_value: bool = False, **filters) -> int:
         query = self._count_query(none_as_value=none_as_value, **filters)
@@ -257,21 +258,22 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         then throw HTTPException with 404 status (Not found).
         Else log exception and throw HTTPException with 409 status (Conflict)
         """
-        if self._need_commit_and_close:
-            try:
-                await self.session.commit()
-            except exc.IntegrityError as e:
-                await self.session.rollback()
-                if 'is not present in table' in str(e.orig):
-                    table_name = str(e.orig).split('is not present in table')[
-                        1].strip().capitalize()
-                    table_name = table_name.strip('"').strip("'")
-                    raise HTTPException(
-                        status_code=404,
-                        detail=f'{table_name} not found'
-                    )
+        if not self._need_commit_and_close:
+            return
+        try:
+            await self.session.commit()
+        except exc.IntegrityError as e:
+            await self.session.rollback()
+            if 'is not present in table' not in str(e.orig):
                 logger.exception(e)
                 raise HTTPException(status_code=409)
+            table_name = str(e.orig).split('is not present in table')[1]
+            table_name = table_name.strip().capitalize()
+            table_name = table_name.strip('"').strip("'")
+            raise HTTPException(
+                status_code=404,
+                detail=f'{table_name} not found'
+            )
 
     async def _update(
             self,
@@ -383,13 +385,13 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             self._session_creator = self.get_session()
             self.session = await anext(self._session_creator)
             logger.debug(f'Create session ({self.session}) with aenter')
-            self._need_commit_and_close = True
+        self._need_commit_and_close = False
         return self
 
     async def __aexit__(self, *exc_info):
-        if self._need_commit_and_close:
-            try:
-                self.session = await anext(self._session_creator)
-                logger.debug(f'Stop session ({self.session}) with aexit')
-            except StopAsyncIteration:
-                pass
+        await self._commit()
+        try:
+            self.session = await anext(self._session_creator)
+            logger.debug(f'Stop session ({self.session}) with aexit')
+        except StopAsyncIteration:
+            pass
