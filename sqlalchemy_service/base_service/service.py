@@ -2,6 +2,7 @@
 
 import uuid
 from typing import Any
+from typing import AsyncGenerator
 from typing import Self
 from typing import TypedDict
 
@@ -10,6 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import ScalarResult
 from sqlalchemy import Select
 from sqlalchemy import exc
+from sqlalchemy import func
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -35,6 +37,15 @@ class QueryService[Table: BaseTable]:
 
     def __init__(self):
         pass
+
+    def _count_query(self, none_as_value: bool = False, **filters) -> Select:
+        query = select(func.count(self.base_table))
+        return self._query_filter(
+            query,
+            none_as_value=none_as_value,
+            **filters
+        )
+
 
     @classmethod
     def _get_list_query(
@@ -173,7 +184,11 @@ class BaseService[Table: BaseTable, IDType](QueryService):
     engine: ServiceEngine
 
 
-    async def get_session(self):
+    def get_session(self) -> AsyncGenerator[AsyncSession, None]:
+        """
+        Method creates all sessions that is used in the BaseService.
+        You can redefine it for more a flexable behavior.
+        """
         return self.engine.get_session()
 
     def __init__(
@@ -189,6 +204,10 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         if not isinstance(session, DependsClass):
             self._need_commit_and_close = True
 
+    async def _count(self, none_as_value: bool = False, **filters) -> int:
+        query = self._count_query(none_as_value=none_as_value, **filters)
+        return await self.session.scalar(query)
+
     async def _get_list(
             self,
             page: int | None = None,
@@ -197,7 +216,10 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             none_as_value: bool = False,
             **filters
     ) -> ScalarResult[Table]:
-        """Get models list by filters. Defaults page to 0 and count to 20"""
+        """
+        Get models list by filters. Defaults page to 0 and count to 20
+
+        """
         query = self._get_list_query(
             page=page,
             count=count,
@@ -358,7 +380,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
 
     async def __aenter__(self) -> Self:
         if not isinstance(self.session, AsyncSession):
-            self._session_creator = self.engine.get_session()
+            self._session_creator = self.get_session()
             self.session = await anext(self._session_creator)
             logger.debug(f'Create session ({self.session}) with aenter')
             self._need_commit_and_close = True

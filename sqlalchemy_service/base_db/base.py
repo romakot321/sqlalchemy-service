@@ -1,4 +1,5 @@
 """Module with database connection pool and engine"""
+from typing import AsyncGenerator
 
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,11 +42,10 @@ class ServiceEngine:
             autocommit=autocommit
         )
 
-    async def get_session(self):
+    async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """Generator for database session. Need to be closed"""
         async with self.async_session() as session:
             yield session
-
 
 class Base(DeclarativeBase):
     pass
