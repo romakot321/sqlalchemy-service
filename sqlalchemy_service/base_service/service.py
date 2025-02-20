@@ -259,6 +259,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         Else log exception and throw HTTPException with 409 status (Conflict)
         """
         if not self._need_commit_and_close:
+            await self.session.flush()
             return
         try:
             await self.session.commit()
@@ -392,6 +393,5 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         await self._commit()
         try:
             self.session = await anext(self._session_creator)
-            logger.debug(f'Stop session ({self.session}) with aexit')
         except StopAsyncIteration:
-            pass
+            logger.debug(f'Stop session ({self.session}) with aexit')
