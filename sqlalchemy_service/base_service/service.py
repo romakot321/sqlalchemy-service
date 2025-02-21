@@ -183,7 +183,6 @@ class BaseService[Table: BaseTable, IDType](QueryService):
     base_table: type[Table]
     engine: ServiceEngine
 
-
     def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """
         Method creates all sessions that is used in the BaseService.
@@ -200,6 +199,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         self.response = response
         self._session_creator = None
         self.session = session
+        self.objects_to_refresh = []
         # isinstance(session, DependsClass) == True means that
         # FastAPI "Depends" was not called.
         # Then you need use python with-syntax to create and close session
@@ -281,6 +281,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             object_filter: dict[str, Any] | IDType,
             object_schema: BaseModel | dict | None = None,
             none_as_value: bool = False,
+            refresh: bool = True,
             **kwargs
     ) -> Table:
         """
@@ -300,7 +301,10 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             none_as_value,
             **kwargs
         )
-        await self.session.refresh(obj)
+        if refresh:
+            await self.session.refresh(obj)
+        else:
+            self.objects_to_refresh.append(obj)
         return obj
 
     async def _update_obj(
@@ -340,6 +344,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             self,
             object_schema: BaseModel | None = None,
             creator_id: uuid.UUID | None = None,
+            refresh: bool = True,
             **kwargs
     ) -> Table:
         """
@@ -360,10 +365,14 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         )
 
         self.session.add(obj)
-        await self._commit()
-        await self.session.refresh(obj)
+        if refresh:
+            await self._commit()
+            await self.session.refresh(obj)
+        else:
+            self.objects_to_refresh.append(obj)
         self.response.status_code = 201
         return obj
+
 
     async def _delete(self, object_filter: dict[str, Any] | IDType):
         """Get model by filters and delete it"""
@@ -391,6 +400,13 @@ class BaseService[Table: BaseTable, IDType](QueryService):
 
     async def __aexit__(self, *exc_info):
         await self._commit()
+        if self.objects_to_refresh:
+            logger.debug(
+                f'Commit and yry to refresh objects, '
+                f'count={len(self.objects_to_refresh)}'
+            )
+        for _ in range(len(self.objects_to_refresh)):
+            await self.session.refresh(self.objects_to_refresh.pop())
         try:
             self.session = await anext(self._session_creator)
         except StopAsyncIteration:
