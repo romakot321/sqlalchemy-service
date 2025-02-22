@@ -39,7 +39,7 @@ class QueryService[Table: BaseTable]:
         pass
 
     def _count_query(self, none_as_value: bool = False, **filters) -> Select:
-        query = select(func.count(self.base_table))
+        query = select(func.count()).select_from(self.base_table)
         return self._query_filter(
             query,
             none_as_value=none_as_value,
@@ -193,7 +193,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
     def __init__(
             self,
             session: AsyncSession = Depends(get_session),
-            response: Response = Response
+            response: Response = Response,
     ):
         super().__init__()
         self.response = response
@@ -203,7 +203,9 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         # isinstance(session, DependsClass) == True means that
         # FastAPI "Depends" was not called.
         # Then you need use python with-syntax to create and close session
-        self._need_commit_and_close = isinstance(session, DependsClass)
+        logger.debug(f'Initialize Service with {type(session)=}')
+        self._need_commit_and_close: bool = isinstance(session, DependsClass)
+        logger.debug(f'Initialize Service with {self._need_commit_and_close=}')
 
     async def _count(self, none_as_value: bool = False, **filters) -> int:
         query = self._count_query(none_as_value=none_as_value, **filters)
@@ -250,38 +252,12 @@ class BaseService[Table: BaseTable, IDType](QueryService):
 
         return obj
 
-    async def _commit(self):
-        """
-        Commit changes.
-        Handle sqlalchemy.exc.IntegrityError.
-        If exception is not found error,
-        then throw HTTPException with 404 status (Not found).
-        Else log exception and throw HTTPException with 409 status (Conflict)
-        """
-        if not self._need_commit_and_close:
-            await self.session.flush()
-            return
-        try:
-            await self.session.commit()
-        except exc.IntegrityError as e:
-            await self.session.rollback()
-            if 'is not present in table' not in str(e.orig):
-                logger.exception(e)
-                raise HTTPException(status_code=409)
-            table_name = str(e.orig).split('is not present in table')[1]
-            table_name = table_name.strip().capitalize()
-            table_name = table_name.strip('"').strip("'")
-            raise HTTPException(
-                status_code=404,
-                detail=f'{table_name} not found'
-            )
 
     async def _update(
             self,
             object_filter: dict[str, Any] | IDType,
             object_schema: BaseModel | dict | None = None,
             none_as_value: bool = False,
-            refresh: bool = True,
             **kwargs
     ) -> Table:
         """
@@ -301,10 +277,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             none_as_value,
             **kwargs
         )
-        if refresh:
-            await self.session.refresh(obj)
-        else:
-            self.objects_to_refresh.append(obj)
+        self.objects_to_refresh.append(obj)
         return obj
 
     async def _update_obj(
@@ -344,7 +317,6 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             self,
             object_schema: BaseModel | None = None,
             creator_id: uuid.UUID | None = None,
-            refresh: bool = True,
             **kwargs
     ) -> Table:
         """
@@ -365,11 +337,8 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         )
 
         self.session.add(obj)
-        if refresh:
-            await self._commit()
-            await self.session.refresh(obj)
-        else:
-            self.objects_to_refresh.append(obj)
+        await self._commit()
+        self.objects_to_refresh.append(obj)
         self.response.status_code = 201
         return obj
 
@@ -390,6 +359,45 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         await self._commit()
         self.response.status_code = 204
 
+    async def refresh(self):
+        if self.objects_to_refresh and self._need_commit_and_close:
+            logger.debug(
+                f'Commit and yry to refresh objects, '
+                f'count={len(self.objects_to_refresh)}'
+            )
+            await self.session.flush(self.objects_to_refresh)
+        for _ in range(len(self.objects_to_refresh)):
+            await self.session.refresh(self.objects_to_refresh.pop())
+
+    async def _commit(self):
+        """
+        Commit changes.
+        Handle sqlalchemy.exc.IntegrityError.
+        If exception is not found error,
+        then throw HTTPException with 404 status (Not found).
+        Else log exception and throw HTTPException with 409 status (Conflict)
+        """
+        if not self._need_commit_and_close:
+            logger.debug('Service no commit')
+            return
+        try:
+            logger.debug('Service try commit')
+            await self.session.commit()
+            logger.debug('Service commit successful')
+        except exc.IntegrityError as e:
+            logger.warning('Service rollback')
+            await self.session.rollback()
+            if 'is not present in table' not in str(e.orig):
+                logger.exception(e)
+                raise HTTPException(status_code=409)
+            table_name = str(e.orig).split('is not present in table')[1]
+            table_name = table_name.strip().capitalize()
+            table_name = table_name.strip('"').strip("'")
+            raise HTTPException(
+                status_code=404,
+                detail=f'{table_name} not found'
+            )
+
     async def __aenter__(self) -> Self:
         if not isinstance(self.session, AsyncSession):
             self._session_creator = self.get_session()
@@ -399,14 +407,10 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         return self
 
     async def __aexit__(self, *exc_info):
+        self._need_commit_and_close = True
         await self._commit()
-        if self.objects_to_refresh:
-            logger.debug(
-                f'Commit and yry to refresh objects, '
-                f'count={len(self.objects_to_refresh)}'
-            )
-        for _ in range(len(self.objects_to_refresh)):
-            await self.session.refresh(self.objects_to_refresh.pop())
+        self._need_commit_and_close = False
+        await self.refresh()
         try:
             self.session = await anext(self._session_creator)
         except StopAsyncIteration:

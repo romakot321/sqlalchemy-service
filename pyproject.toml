@@ -1,13 +1,18 @@
 [tool.poetry.scripts]
 init-db = "sqlalchemy_service.base_db.create:run_init_db"
 
+[tool.poetry.group.dev.dependencies]
+pytest = {extras = ["asyncio"], version = "^8.3.4"}
+pytest-asyncio = "^0.25.3"
+psycopg2-binary = "^2.9.10"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "sqlalchemy-service"
-version = "1.0.0a6"
+version = "1.0.0"
 description = ""
 authors = [
   { name = "prostoLavr (Lawrence Naumov)", email = "<prostolawr@gmail.com>" },
@@ -21,11 +26,14 @@ maintainers = [
   { name = "romakot321" },
 ]
 dependencies = [
-    "sqlalchemy[asyncio] (>=2.0.38,<3.0.0)",
     "loguru~=0.7.3",
     "pydantic-settings~=2.7.1",
-    "alembic~=1.14.0"
+    "alembic~=1.14.0",
+    "pytest-asyncio (>=0.25.3,<0.26.0)",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
 
 [project.optional-dependencies]
 fastapi = ["fastapi~=0.115.8"]
