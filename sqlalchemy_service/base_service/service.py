@@ -73,11 +73,9 @@ class QueryService[Table: BaseTable]:
             page: int | None = None,
             count: int | None = None
     ):
-        if page is None and count is not None:
+        if page is None:
             page = 0
-        if page is not None and count is None:
-            count = 20
-        if page is not None and count is not None:
+        if count is not None:
             offset = page * count
             query = query.offset(offset).limit(count)
         return query
