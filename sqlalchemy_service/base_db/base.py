@@ -17,7 +17,7 @@ class ServiceEngine:
     def __init__(
             self,
             url: str | None = None,
-            pool_size: int = 5,
+            pool_size: int = 30,
             max_overflow: int = 0,
             pool_reset_on_return: bool = True,
             expire_on_commit: bool = False,
@@ -28,6 +28,7 @@ class ServiceEngine:
             db_configurator = DBConfigurator()
             url = db_configurator.configuration.get_url()
 
+        self.pool_size = pool_size
         self.engine = create_async_engine(
             url,
             pool_size=pool_size,
@@ -46,6 +47,10 @@ class ServiceEngine:
         """Generator for database session. Need to be closed"""
         async with self.async_session() as session:
             yield session
+
+
+default_service_engine = ServiceEngine()
+
 
 class Base(DeclarativeBase):
     pass

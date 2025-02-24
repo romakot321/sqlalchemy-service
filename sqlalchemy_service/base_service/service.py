@@ -18,7 +18,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import InstrumentedAttribute as TableAttr
 
 from sqlalchemy_service.base_db.base import Base as BaseTable
-from sqlalchemy_service.base_db.base import ServiceEngine
+from sqlalchemy_service.base_db.base import default_service_engine
 
 
 class TableAttributeWithSubqueryLoad(TypedDict):
@@ -181,7 +181,6 @@ class BaseService[Table: BaseTable, IDType](QueryService):
     and base db exceptions handlers.
     """
     base_table: type[Table]
-    engine: ServiceEngine
 
     def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """
@@ -192,10 +191,11 @@ class BaseService[Table: BaseTable, IDType](QueryService):
 
     def __init__(
             self,
-            session: AsyncSession = Depends(get_session),
+            session: AsyncSession = Depends(default_service_engine.get_session),
             response: Response = Response,
     ):
         super().__init__()
+        self.engine = default_service_engine
         self.response = response
         self._session_creator = None
         self.session = session
