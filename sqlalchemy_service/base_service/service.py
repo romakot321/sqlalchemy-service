@@ -377,9 +377,6 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         then throw HTTPException with 404 status (Not found).
         Else log exception and throw HTTPException with 409 status (Conflict)
         """
-        if not self._need_commit_and_close:
-            logger.debug('Service no commit')
-            return
         try:
             logger.debug('Service try commit')
             await self.session.commit()
