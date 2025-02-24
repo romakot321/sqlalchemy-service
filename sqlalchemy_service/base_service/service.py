@@ -360,7 +360,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         self.response.status_code = 204
 
     async def refresh(self):
-        if self.objects_to_refresh and self._need_commit_and_close:
+        if self.objects_to_refresh:
             logger.debug(
                 f'Commit and yry to refresh objects, '
                 f'count={len(self.objects_to_refresh)}'

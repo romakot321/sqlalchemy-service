@@ -138,7 +138,6 @@ async def test_get_list_with_multiple():
 async def test_update():
     async with UserService() as service:
         await service.update(user_id, UserUpdateSchema(name="test_updated"))
-    async with UserService() as service:
         user = await service.get(user_id)
     assert user.id == user_id
     assert user.name == "test_updated"
@@ -177,7 +176,6 @@ async def test_delete():
     global user_id
     async with UserService() as service:
         await service.delete(user_id)
-    async with UserService() as service:
         user = await service.get(user_id)
         count = await service.count()
     assert user is None
@@ -193,3 +191,10 @@ async def test_delete_multiple():
         count = await service.count()
     assert count == 0
 
+
+async def test_with_refresh():
+    async with UserService() as service:
+        await service.create(UserCreateSchema(name='Test Ivan'))
+        await service.refresh()
+        count = await service.count()
+    assert count == 1
