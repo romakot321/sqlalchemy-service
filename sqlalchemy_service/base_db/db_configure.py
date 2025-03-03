@@ -153,7 +153,7 @@ class MySQLDBConfiguration(DBConfigureInterface, BaseSettings):
             raise DBHostNotSetError('mysql')
         if not self.mysql_db:
             raise DBNameNotSetError('mysql')
-        return f'mysql+mysqlconnector://' \
+        return f'mysql+aiomysql://' \
                f'{self.mysql_user}:{self.mysql_password}' \
                f'@{self.mysql_host}:{self.mysql_port}/{self.mysql_db}'
 
