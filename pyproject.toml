@@ -12,7 +12,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "sqlalchemy-service"
-version = "1.0.3"
+version = "1.0.4"
 description = ""
 authors = [
   { name = "prostoLavr (Lawrence Naumov)", email = "<prostolawr@gmail.com>" },

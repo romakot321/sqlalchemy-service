@@ -188,15 +188,18 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         """
         return self.engine.get_session()
 
+
     def __init__(
             self,
-            session: AsyncSession = Depends(get_session),
+            session: AsyncSession | None = None,
             response: Response = Response,
     ):
         super().__init__()
         self.response = response
         self._session_creator = None
         self.session = session
+        if self.session is None:
+            session = self.get_session()
         self.objects_to_refresh = []
         # isinstance(session, DependsClass) == True means that
         # FastAPI "Depends" was not called.
