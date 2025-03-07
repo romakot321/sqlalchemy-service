@@ -296,19 +296,13 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         elif isinstance(object_schema, BaseModel):
             object_schema = object_schema.model_dump()
 
-        modified = False
         for key, value in (object_schema | kwargs).items():
-            attr = getattr(obj, key)
             if not none_as_value and value is None:
                 continue
-            field_is_modified = attr != value
             setattr(obj, key, value)
 
-            modified = modified or field_is_modified
         self.session.add(obj)
         await self._commit()
-        if not modified:
-            self.response.status_code = 304
         return obj
 
     async def _create(
