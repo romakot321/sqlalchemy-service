@@ -181,31 +181,38 @@ class BaseService[Table: BaseTable, IDType](QueryService):
     base_table: type[Table]
     engine: ServiceEngine
 
-    def get_session(self) -> AsyncGenerator[AsyncSession, None]:
+    @classmethod
+    def get_session(cls) -> AsyncGenerator[AsyncSession, None]:
         """
         Method creates all sessions that is used in the BaseService.
         You can redefine it for more a flexable behavior.
         """
-        return self.engine.get_session()
+        return cls.engine.get_session()
 
+    @classmethod
+    async def depend(
+            cls,
+            response: Response = Response
+    ) -> AsyncGenerator[Self]:
+        async with cls(response) as service:
+            yield service
+        logger.debug('gere')
 
     def __init__(
             self,
-            session: AsyncSession | None = None,
             response: Response = Response,
+            session: AsyncSession | None = None
     ):
         super().__init__()
         self.response = response
         self._session_creator = None
         self.session = session
-        if self.session is None:
-            session = self.get_session()
         self.objects_to_refresh = []
         # isinstance(session, DependsClass) == True means that
         # FastAPI "Depends" was not called.
         # Then you need use python with-syntax to create and close session
-        logger.debug(f'Initialize Service with {type(session)=}')
-        self._need_commit_and_close: bool = isinstance(session, DependsClass)
+        logger.debug(f'Initialize Service with {type(None)=}')
+        self._need_commit_and_close: bool = isinstance(None, DependsClass)
         logger.debug(f'Initialize Service with {self._need_commit_and_close=}')
 
     async def _count(self, none_as_value: bool = False, **filters) -> int:
@@ -392,6 +399,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
                 status_code=404,
                 detail=f'{table_name} not found'
             )
+
 
     async def __aenter__(self) -> Self:
         if not isinstance(self.session, AsyncSession):

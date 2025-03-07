@@ -1,78 +1,9 @@
 from asyncio import TaskGroup
 
-from pydantic import BaseModel
-from sqlalchemy import ScalarResult
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column as column
-
-from sqlalchemy_service import Base
-from sqlalchemy_service import BaseService
-from sqlalchemy_service.base_db.base import ServiceEngine
-from sqlalchemy_service.base_db.create import run_init_db
-from sqlalchemy_service.base_db.db_configure import DBConfigurator
-
-
-class User(Base):
-    __tablename__ = "users"
-    id: Mapped[int] = column(primary_key=True, autoincrement=True)
-    name: Mapped[str]
-
-
-class UserCreateSchema(BaseModel):
-    name: str
-
-
-class UserUpdateSchema(BaseModel):
-    name: str | None = None
-
-
-# You can manually set urls for engines, or use autodetect
-engine = ServiceEngine()
-
-
-class UserService[Table: User, int](BaseService):
-    base_table = User
-    engine = engine
-
-    async def create(self, schema: UserCreateSchema) -> User:
-        return await self._create(schema)
-
-    async def list(self, page=None, count=None) -> ScalarResult[User]:
-        return await self._get_list(page=page, count=count)
-
-    async def get(self, user_id: int) -> User:
-        """Return user. If user not found, return None"""
-        return await self._get_one(id=user_id, mute_not_found_exception=True)
-
-    async def get_list(self) -> ScalarResult[User]:
-        return await self._get_list()
-
-    async def update(self, user_id: int, schema: UserUpdateSchema) -> User:
-        return await self._update(user_id, schema)
-
-    async def delete(self, user_id: int):
-        await self._delete(user_id)
-
-    async def count(self) -> int:
-        return await self._count()
-
-    async def count_with_name_like(self, name: str) -> int:
-        query = self._count_query()
-        query = self._query_like_filter(query, name=name)
-        return await self.session.scalar(query)
-
-
-def test_init_db():
-    run_init_db()
-    sync_engine = create_engine(
-        DBConfigurator().configuration.get_url().replace('asyncpg', 'psycopg2'),
-        pool_size=1,
-        max_overflow=0,
-        pool_reset_on_return=True
-    )
-    Base.metadata.drop_all(sync_engine.engine)
-    Base.metadata.create_all(sync_engine.engine)
+from tests.service import User
+from tests.service import UserCreateSchema
+from tests.service import UserService
+from tests.service import UserUpdateSchema
 
 
 async def test_get_void_list():
@@ -81,7 +12,7 @@ async def test_get_void_list():
     assert len(users.all()) == 0
 
 
-user_id = None
+test_user_id = 0
 
 
 async def test_create():
@@ -90,8 +21,8 @@ async def test_create():
     assert isinstance(user.id, int)
     assert isinstance(user.name, str)
     assert user.name == "test"
-    global user_id
-    user_id = user.id
+    global test_user_id
+    test_user_id = user.id
 
 
 async def test_get_list_with_one():
@@ -101,11 +32,11 @@ async def test_get_list_with_one():
 
 
 async def get_user_by_id():
-    assert user_id is not None
+    assert test_user_id != 0
     async with UserService() as service:
-        user = await service.get(user_id)
+        user = await service.get(test_user_id)
     assert user.name == "test"
-    assert user.id == user_id
+    assert user.id == test_user_id
 
 
 multiple_user_ids: list[int] = []
@@ -137,9 +68,12 @@ async def test_get_list_with_multiple():
 
 async def test_update():
     async with UserService() as service:
-        await service.update(user_id, UserUpdateSchema(name="test_updated"))
-        user = await service.get(user_id)
-    assert user.id == user_id
+        await service.update(
+            test_user_id,
+            UserUpdateSchema(name="test_updated")
+        )
+        user = await service.get(test_user_id)
+    assert user.id == test_user_id
     assert user.name == "test_updated"
 
 
@@ -173,10 +107,10 @@ async def test_like_filter():
 
 
 async def test_delete():
-    global user_id
+    global test_user_id
     async with UserService() as service:
-        await service.delete(user_id)
-        user = await service.get(user_id)
+        await service.delete(test_user_id)
+        user = await service.get(test_user_id)
         count = await service.count()
     assert user is None
     assert count == 10
