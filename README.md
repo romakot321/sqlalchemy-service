@@ -18,6 +18,7 @@ This is a library that simplifies working with database CRUD queries and connect
 import asyncio
 from random import randint
 
+from fastapi import Response
 from pydantic import BaseModel
 from sqlalchemy import ScalarResult
 from sqlalchemy.orm import Mapped
@@ -59,6 +60,14 @@ class UserService[Table: User, int](BaseService):
             return engine_1
         return engine_2
 
+    # Redefine BaseService.depend to use dependencies in your service.
+    # Just don't rewrite it to use service without dependencies
+    @classmethod
+    async def depend(cls, response: Response = Response):
+        async with cls(response) as service:
+            yield service
+
+
     async def create(self, schema: UserCreateSchema) -> User:
         return await self._create(schema)
 
@@ -91,9 +100,39 @@ async def main():
 
 
 asyncio.run(main())
+
+# or in fastapi apps
+
+from fastapi import FastAPI
+from fastapi import Depends
+
+
+app = FastAPI()
+
+
+@app.get('/users/{user_id}')
+async def get_users(
+        user_id: int,
+        user_service: UserService = Depends(UserService.depend)
+):
+    return await user_service.get(user_id)
+
+
+@app.post('/users')
+async def create_user(
+        schema: UserCreateSchema,
+        user_service: UserService = Depends(UserService.depend)
+):
+    user = await user_service.create(schema)
+    await user_service.refresh()  # Need to calculate user ID
+    return user
+
 ```
 
 # Updates
+### 1.0.5:
+- FastAPI depends support
+ 
 ### 1.0.0:
 - custom engine style
 - more use-ready commands
