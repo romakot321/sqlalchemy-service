@@ -1,5 +1,3 @@
-from sqlalchemy_service.base_db.db_configure import MySQLDBConfigurationfrom sqlalchemy.ext.asyncio import AsyncSessionfrom typing import AsyncGenerator
-
 # Sqlalchemy-service
 This is a library that simplifies working with database CRUD queries and connection management.
 
