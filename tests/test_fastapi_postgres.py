@@ -34,6 +34,16 @@ async def create(
     return user
 
 
+@app.get('/users/{user_id}')
+async def get(
+        user_id: int,
+        user_service: UserService = Depends(UserService.depend),
+):
+    user = await user_service.get(user_id)
+    return user
+
+
+
 @app.delete('/users/{user_id}')
 async def delete(
         user_id: int,
@@ -53,6 +63,17 @@ async def test_fastapi_create_user(client: AsyncClient):
     logger.debug(f'{user=}')
     assert isinstance(user['id'], int)
     test_user_id = user['id']
+
+async def test_fastapi_get_user(client: AsyncClient):
+    global test_user_id
+    response = await client.get(f'/users/{test_user_id}')
+    logger.debug(response.content)
+    assert response.status_code == 200
+    user = response.json()
+    logger.debug(f'{user=}')
+    assert isinstance(user['id'], int)
+    assert user['id'] == test_user_id
+
 
 async def test_fastapi_delete_user(client: AsyncClient):
     response = await client.delete(f'/users/{test_user_id}')
