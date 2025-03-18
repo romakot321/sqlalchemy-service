@@ -340,7 +340,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         if self.replace_tzinfo:
             self.__replace_dt_timezone(obj_dict)
         obj = self.base_table(
-            **obj_dict, **kwargs
+            **obj_dict
         )
 
         self.session.add(obj)
