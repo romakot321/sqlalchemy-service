@@ -128,6 +128,10 @@ async def create_user(
 ```
 
 # Updates
+### 1.0.7
+- We decide that 
+`POSTGRES_<config>` is not deprecated and 
+is used by postgres docker image.
 ### 1.0.5:
 - FastAPI depends support
  

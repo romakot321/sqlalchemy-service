@@ -2,7 +2,9 @@ import os
 from abc import abstractmethod
 
 from loguru import logger
-from pydantic_settings import BaseSettings, SettingsConfigDict, SettingsError
+from pydantic_settings import BaseSettings
+from pydantic_settings import SettingsConfigDict
+from pydantic_settings import SettingsError
 
 
 class DBConfigureInterface:
@@ -50,7 +52,11 @@ class DBConfigurationNotFoundError(Exception):
 
 class OldPostgresSQLDBConfiguration(DBConfigureInterface, BaseSettings):
     postgres_env_warning: bool = True
-    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra="allow")
+    model_config = SettingsConfigDict(
+        env_file='.env',
+        env_file_encoding='utf-8',
+        extra="allow"
+    )
 
     postgres_host: str = os.getenv('POSTGRES_HOST', '')
     postgres_database: str = os.getenv('POSTGRES_DATABASE', '')
@@ -77,16 +83,6 @@ class OldPostgresSQLDBConfiguration(DBConfigureInterface, BaseSettings):
         return self.postgres_user
 
     def _validate(self):
-        pg_default_envs_link: str = "https://www.postgresql.org/docs/current/libpq-envars.html"
-        if self.postgres_env_warning:
-            logger.warning(
-                "POSTGRES_<setting> is deprecated. "
-                "Please, use PG<setting>\n"
-                f"See {pg_default_envs_link}\n"
-                "Set POSTGRES_ENV_WARNING=false to ignore it"
-            )
-            self.postgres_env_warning = False
-
         if not self.postgres_host:
             raise DBHostNotSetError('old-postgres')
         if not self.postgres_database:
@@ -100,7 +96,11 @@ class OldPostgresSQLDBConfiguration(DBConfigureInterface, BaseSettings):
 
 
 class PostgresSQLDBConfiguration(DBConfigureInterface, BaseSettings):
-    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra="allow")
+    model_config = SettingsConfigDict(
+        env_file='.env',
+        env_file_encoding='utf-8',
+        extra="allow"
+    )
 
     pghost: str = os.getenv('PGHOST', '')
     pgdatabase: str = os.getenv('PGDATABASE', '')
@@ -140,7 +140,11 @@ class PostgresSQLDBConfiguration(DBConfigureInterface, BaseSettings):
 
 
 class MySQLDBConfiguration(DBConfigureInterface, BaseSettings):
-    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra="allow")
+    model_config = SettingsConfigDict(
+        env_file='.env',
+        env_file_encoding='utf-8',
+        extra="allow"
+    )
 
     mysql_host: str = os.getenv('MYSQL_HOST', '')
     mysql_db: str = os.getenv('MYSQL_DB', '')
@@ -194,5 +198,7 @@ class DBConfigurator:
                 self.configuration = configuration
                 return
             except (DBHostNotSetError, DBNameNotSetError, SettingsError):
-                logger.debug(f'Error on get envs for {configuration_class.__class__.__name__}')
+                logger.debug(
+                    f'Error on get envs for {configuration_class.__class__.__name__}'
+                )
         raise DBConfigurationNotFoundError

@@ -1,5 +1,6 @@
 """Module with base classes for db connection and queries management"""
 
+import datetime as dt
 import uuid
 from typing import Any
 from typing import AsyncGenerator
@@ -180,6 +181,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
     """
     base_table: type[Table]
     engine: ServiceEngine
+    replace_tzinfo: bool = True
 
     @classmethod
     def get_session(cls) -> AsyncGenerator[AsyncSession, None]:
@@ -334,6 +336,9 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             kwargs['creator_id'] = creator_id
             kwargs['editor_id'] = creator_id
 
+        obj_dict = {**obj_dict, **kwargs}
+        if self.replace_tzinfo:
+            self.__replace_dt_timezone(obj_dict)
         obj = self.base_table(
             **obj_dict, **kwargs
         )
@@ -399,6 +404,13 @@ class BaseService[Table: BaseTable, IDType](QueryService):
                 status_code=404,
                 detail=f'{table_name} not found'
             )
+
+    @staticmethod
+    def __replace_dt_timezone(obj_dict: dict):
+        for key, value in obj_dict.items():
+            if isinstance(value, dt.datetime):
+                obj_dict[key].replace(tzinfo=None)
+        return obj_dict
 
 
     async def __aenter__(self) -> Self:

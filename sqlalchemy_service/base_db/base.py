@@ -47,6 +47,6 @@ class ServiceEngine:
         async with self.async_session() as session:
             yield session
 
+
 class Base(DeclarativeBase):
     pass
-
