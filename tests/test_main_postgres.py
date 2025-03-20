@@ -66,6 +66,12 @@ async def test_get_list_with_multiple():
     assert len(users.all()) == 11
 
 
+async def test_get_list_with_pagination():
+    async with UserService() as service:
+        users = await service.list(page=2, count=3)
+    assert len(users.all()) == 3
+
+
 async def test_update():
     async with UserService() as service:
         await service.update(
