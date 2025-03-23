@@ -64,7 +64,7 @@ class QueryService[Table: BaseTable]:
         query = select(cls.base_table)
         if select_in_load is not None:
             query = cls._query_add_select_in_load(query, select_in_load)
-        cls.__query_pagination(query, page, count)
+        query = cls.__query_pagination(query, page, count)
         query = cls._query_filter(query, none_as_value, **filters)
         return query
 
