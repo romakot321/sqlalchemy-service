@@ -128,6 +128,8 @@ async def create_user(
 ```
 
 # Updates
+### 1.0.9
+- Bug fix get list query pagination
 ### 1.0.7
 - We decide that 
 `POSTGRES_<config>` is not deprecated and 
