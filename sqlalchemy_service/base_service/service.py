@@ -213,8 +213,8 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         # isinstance(session, DependsClass) == True means that
         # FastAPI "Depends" was not called.
         # Then you need use python with-syntax to create and close session
-        logger.debug(f'Initialize Service with {type(None)=}')
-        self._need_commit_and_close: bool = isinstance(None, DependsClass)
+        logger.debug(f'Initialize Service with {type(session)=}')
+        self._need_commit_and_close: bool = isinstance(session, DependsClass)
         logger.debug(f'Initialize Service with {self._need_commit_and_close=}')
 
     async def _count(self, none_as_value: bool = False, **filters) -> int:
@@ -321,6 +321,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
             self,
             object_schema: BaseModel | None = None,
             creator_id: uuid.UUID | None = None,
+            force_commit: bool = False,
             **kwargs
     ) -> Table:
         """
@@ -344,7 +345,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         )
 
         self.session.add(obj)
-        await self._commit()
+        await self._commit(force=force_commit)
         self.objects_to_refresh.append(obj)
         self.response.status_code = 201
         return obj
@@ -376,7 +377,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         for _ in range(len(self.objects_to_refresh)):
             await self.session.refresh(self.objects_to_refresh.pop())
 
-    async def _commit(self):
+    async def _commit(self, force: bool = False):
         """
         Commit changes.
         Handle sqlalchemy.exc.IntegrityError.
@@ -384,7 +385,7 @@ class BaseService[Table: BaseTable, IDType](QueryService):
         then throw HTTPException with 404 status (Not found).
         Else log exception and throw HTTPException with 409 status (Conflict)
         """
-        if not self._need_commit_and_close:
+        if not force and not self._need_commit_and_close:
             logger.debug('Service no commit')
             return
         try:
